@@ -45,6 +45,36 @@ import java.util.function.BiConsumer;
 public final class Settings {
 
     /**
+     * Turns on yamiblue edits (sky art anti grief functionality)
+     * やみブルーの機能（スカイアート・アンチグリーフ）を使います。
+     */
+    public final Setting<Boolean> yamiblue = new Setting<>(true);
+
+    /**
+     * YB: Breaks blocks only if 3 block side is correct
+     * YB: 側の三個のブロックが正しい場合ブロックを壊す。
+     */
+    public final Setting<Boolean> breakFullSidesOnly = new Setting<>(true);
+
+    /**
+     * YB: Breaks blocks only if a 3 block corner is correct
+     * YB: 隅の三個のブロックが正しい場合ブロックを壊す。
+     */
+    public final Setting<Boolean> breakCornersOnly = new Setting<>(true);
+
+    /**
+     * YB: Breaks blocks only if defined adjacent block is correct
+     * YB: 定義されていた接続のブロックが正しい場合ブロックを壊す。
+     */
+    public final Setting<Boolean> breakFromDirection = new Setting<>(true);
+
+    /**
+     * YB: Adjacent direction used by breakFromDirection (possible values are n, s, w, e)
+     * YB: breakFromDirectionで使用される隣接方向（n, s, w, e）
+     */
+    public final Setting<String> breakingDirection = new Setting<>("n");
+
+    /**
      * Allow Baritone to break blocks
      */
     public final Setting<Boolean> allowBreak = new Setting<>(true);
@@ -936,14 +966,14 @@ public final class Settings {
      * <p>
      * Experimental
      */
-    public final Setting<Boolean> breakFromAbove = new Setting<>(false);
+    public final Setting<Boolean> breakFromAbove = new Setting<>(true);
 
     /**
      * As well as breaking from above, set a goal to up and to the side of all blocks to break.
      * <p>
      * Never turn this on without also turning on breakFromAbove.
      */
-    public final Setting<Boolean> goalBreakFromAbove = new Setting<>(false);
+    public final Setting<Boolean> goalBreakFromAbove = new Setting<>(true);
 
     /**
      * Build in map art mode, which makes baritone only care about the top block in each column

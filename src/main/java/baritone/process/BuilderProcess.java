@@ -207,6 +207,49 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
         return state;
     }
 
+    // YamiBlue function to check if block should be destroyed (sky art cleanup purposes)
+    private boolean checkSkyDestroyable(BuilderCalculationContext bcc, int x, int y, int z) {
+        if (!Baritone.settings().yamiblue.value)
+            return true;
+        // If northern (etc) block is incorrect, disallow operation (return false)
+        if (Baritone.settings().breakFromDirection.value) {
+            if (    Baritone.settings().breakingDirection.value.equalsIgnoreCase("n") && !checkCorrect(bcc, x, y, z-1)
+                    || Baritone.settings().breakingDirection.value.equalsIgnoreCase("s") && !checkCorrect(bcc, x, y, z+1)
+                    || Baritone.settings().breakingDirection.value.equalsIgnoreCase("w") && !checkCorrect(bcc, x-1, y, z)
+                    || Baritone.settings().breakingDirection.value.equalsIgnoreCase("e") && !checkCorrect(bcc, x+1, y, z)
+            ) {
+                return false;
+            }
+        }
+        // 3 blocks that make a corner
+        if (Baritone.settings().breakCornersOnly.value) {
+            if (    !( checkCorrect(bcc, x-1, y, z) && checkCorrect(bcc, x-1, y, z-1) && checkCorrect(bcc, x, y, z-1)
+                    || checkCorrect(bcc, x+1, y, z) && checkCorrect(bcc, x+1, y, z+1) && checkCorrect(bcc, x, y, z+1)
+                    || checkCorrect(bcc, x-1, y, z) && checkCorrect(bcc, x-1, y, z+1) && checkCorrect(bcc, x, y, z+1)
+                    || checkCorrect(bcc, x+1, y, z) && checkCorrect(bcc, x+1, y, z-1) && checkCorrect(bcc, x, y, z-1) )
+            ) {
+                return false;
+            }
+        }
+        // 3 blocks that make a side
+        if (Baritone.settings().breakFullSidesOnly.value) {
+            if (    !( checkCorrect(bcc, x-1, y, z+1) && checkCorrect(bcc, x, y, z+1) && checkCorrect(bcc, x+1, y, z+1)
+                    || checkCorrect(bcc, x-1, y, z-1) && checkCorrect(bcc, x, y, z-1) && checkCorrect(bcc, x+1, y, z-1)
+                    || checkCorrect(bcc, x+1, y, z-1) && checkCorrect(bcc, x+1, y, z) && checkCorrect(bcc, x+1, y, z+1)
+                    || checkCorrect(bcc, x-1, y, z-1) && checkCorrect(bcc, x-1, y, z) && checkCorrect(bcc, x-1, y, z+1) )
+            ) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private boolean checkCorrect(BuilderCalculationContext bcc, int x, int y, int z) {
+        IBlockState curr = bcc.bsi.get0(x, y, z);
+        IBlockState desired = bcc.getSchematic(x, y, z, curr);
+        return desired == null || desired.getBlock() == curr.getBlock();
+    }
+
     private Optional<Tuple<BetterBlockPos, Rotation>> toBreakNearPlayer(BuilderCalculationContext bcc) {
         BetterBlockPos center = ctx.playerFeet();
         BetterBlockPos pathStart = baritone.getPathingBehavior().pathStart();
@@ -223,8 +266,15 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
                     if (desired == null) {
                         continue; // irrelevant
                     }
+
                     IBlockState curr = bcc.bsi.get0(x, y, z);
                     if (curr.getBlock() != Blocks.AIR && !(curr.getBlock() instanceof BlockLiquid) && !valid(curr, desired, false)) {
+
+                        // YamiBlue segment
+                        if (Baritone.settings().yamiblue.value && !checkSkyDestroyable(bcc, x, y, z)) {
+                            continue;
+                        }
+
                         BetterBlockPos pos = new BetterBlockPos(x, y, z);
                         Optional<Rotation> rot = RotationUtils.reachable(ctx.player(), pos, ctx.playerController().getBlockReachDistance());
                         if (rot.isPresent()) {
@@ -563,8 +613,22 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
                     int z = center.z + dz;
                     IBlockState desired = bcc.getSchematic(x, y, z, bcc.bsi.get0(x, y, z));
                     if (desired != null) {
+
                         // we care about this position
                         BetterBlockPos pos = new BetterBlockPos(x, y, z);
+
+                        // YamiBlue segment
+                        if (Baritone.settings().yamiblue.value) {
+                            if (valid(bcc.bsi.get0(x, y, z), desired, false) || !checkSkyDestroyable(bcc, x, y, z)) {
+                                incorrectPositions.remove(pos);
+                                observedCompleted.add(BetterBlockPos.longHash(pos));
+                            } else {
+                                incorrectPositions.add(pos);
+                                observedCompleted.remove(BetterBlockPos.longHash(pos));
+                            }
+                            continue;
+                        }
+
                         if (valid(bcc.bsi.get0(x, y, z), desired, false)) {
                             incorrectPositions.remove(pos);
                             observedCompleted.add(BetterBlockPos.longHash(pos));
