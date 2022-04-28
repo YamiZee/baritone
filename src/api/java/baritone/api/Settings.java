@@ -1031,7 +1031,7 @@ public final class Settings {
      * Distance to scan every tick for updates. Expanding this beyond player reach distance (i.e. setting it to 6 or above)
      * is only necessary in very large schematics where rescanning the whole thing is costly.
      */
-    public final Setting<Integer> builderTickScanRadius = new Setting<>(20); // default value is 5
+    public final Setting<Integer> builderTickScanRadius = new Setting<>(25); // default value is 5
 
     /**
      * While mining, should it also consider dropped items of the correct type as a pathing destination (as well as ore blocks)?
