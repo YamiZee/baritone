@@ -69,10 +69,21 @@ public final class Settings {
     public final Setting<Boolean> breakFromDirection = new Setting<>(true);
 
     /**
+     * YB: breakFullSidesOnly will respect breakFromDirection (sweeps row by row)
+     */
+    public final Setting<Boolean> breakSideFromDirection = new Setting<>(true);
+
+    /**
      * YB: Adjacent direction used by breakFromDirection (possible values are n, s, w, e)
      * YB: breakFromDirectionで使用される隣接方向（n, s, w, e）
      */
     public final Setting<String> breakingDirection = new Setting<>("n");
+
+    /**
+     * YB: Don't allow the block the player is on to be considered for breaking
+     * YB: 乗っているブロックを壊さないように。
+     */
+    public final Setting<Boolean> dontTargetBelow = new Setting<>(false);
 
     /**
      * Allow Baritone to break blocks
@@ -964,14 +975,14 @@ public final class Settings {
     /**
      * Allow standing above a block while mining it, in BuilderProcess
      * <p>
-     * Experimental
+     * Experimental (functionality turned on automatically by #yamiblue true)
      */
-    public final Setting<Boolean> breakFromAbove = new Setting<>(true);
+    public final Setting<Boolean> breakFromAbove = new Setting<>(false);
 
     /**
      * As well as breaking from above, set a goal to up and to the side of all blocks to break.
      * <p>
-     * Never turn this on without also turning on breakFromAbove.
+     * Never turn this on without also turning on breakFromAbove. (not applicable with yamiblue)
      */
     public final Setting<Boolean> goalBreakFromAbove = new Setting<>(true);
 
@@ -1020,7 +1031,7 @@ public final class Settings {
      * Distance to scan every tick for updates. Expanding this beyond player reach distance (i.e. setting it to 6 or above)
      * is only necessary in very large schematics where rescanning the whole thing is costly.
      */
-    public final Setting<Integer> builderTickScanRadius = new Setting<>(5);
+    public final Setting<Integer> builderTickScanRadius = new Setting<>(20); // default value is 5
 
     /**
      * While mining, should it also consider dropped items of the correct type as a pathing destination (as well as ore blocks)?

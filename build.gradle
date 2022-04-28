@@ -16,7 +16,7 @@
  */
 
 group 'baritone'
-version 'y1.2.15.0 ~yamiblue'
+version 'y1.2.15.1 ~yamiblue'
 
 buildscript {
     repositories {

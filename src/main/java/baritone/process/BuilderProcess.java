@@ -211,34 +211,52 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
     private boolean checkSkyDestroyable(BuilderCalculationContext bcc, int x, int y, int z) {
         if (!Baritone.settings().yamiblue.value)
             return true;
+        BetterBlockPos playerFeet = ctx.playerFeet();
+        if (Baritone.settings().dontTargetBelow.value && !Baritone.settings().goalBreakFromAbove.value) {
+            if (playerFeet.x == x && playerFeet.y - 1 == y && playerFeet.z == z) {
+                return false;
+            }
+        }
+        String breakFrom = Baritone.settings().breakingDirection.value.toLowerCase();
         // If northern (etc) block is incorrect, disallow operation (return false)
         if (Baritone.settings().breakFromDirection.value) {
-            if (    Baritone.settings().breakingDirection.value.equalsIgnoreCase("n") && !checkCorrect(bcc, x, y, z-1)
-                    || Baritone.settings().breakingDirection.value.equalsIgnoreCase("s") && !checkCorrect(bcc, x, y, z+1)
-                    || Baritone.settings().breakingDirection.value.equalsIgnoreCase("w") && !checkCorrect(bcc, x-1, y, z)
-                    || Baritone.settings().breakingDirection.value.equalsIgnoreCase("e") && !checkCorrect(bcc, x+1, y, z)
+            if (    breakFrom.equals("n") && !checkCorrect(bcc, x, y, z - 1)
+                    || breakFrom.equals("s") && !checkCorrect(bcc, x, y, z + 1)
+                    || breakFrom.equals("w") && !checkCorrect(bcc, x - 1, y, z)
+                    || breakFrom.equals("e") && !checkCorrect(bcc, x + 1, y, z)
             ) {
                 return false;
             }
         }
         // 3 blocks that make a corner
         if (Baritone.settings().breakCornersOnly.value) {
-            if (    !( checkCorrect(bcc, x-1, y, z) && checkCorrect(bcc, x-1, y, z-1) && checkCorrect(bcc, x, y, z-1)
-                    || checkCorrect(bcc, x+1, y, z) && checkCorrect(bcc, x+1, y, z+1) && checkCorrect(bcc, x, y, z+1)
-                    || checkCorrect(bcc, x-1, y, z) && checkCorrect(bcc, x-1, y, z+1) && checkCorrect(bcc, x, y, z+1)
-                    || checkCorrect(bcc, x+1, y, z) && checkCorrect(bcc, x+1, y, z-1) && checkCorrect(bcc, x, y, z-1) )
+            if (!(checkCorrect(bcc, x - 1, y, z) && checkCorrect(bcc, x - 1, y, z - 1) && checkCorrect(bcc, x, y, z - 1)
+                    || checkCorrect(bcc, x + 1, y, z) && checkCorrect(bcc, x + 1, y, z + 1) && checkCorrect(bcc, x, y, z + 1)
+                    || checkCorrect(bcc, x - 1, y, z) && checkCorrect(bcc, x - 1, y, z + 1) && checkCorrect(bcc, x, y, z + 1)
+                    || checkCorrect(bcc, x + 1, y, z) && checkCorrect(bcc, x + 1, y, z - 1) && checkCorrect(bcc, x, y, z - 1))
             ) {
                 return false;
             }
         }
         // 3 blocks that make a side
         if (Baritone.settings().breakFullSidesOnly.value) {
-            if (    !( checkCorrect(bcc, x-1, y, z+1) && checkCorrect(bcc, x, y, z+1) && checkCorrect(bcc, x+1, y, z+1)
-                    || checkCorrect(bcc, x-1, y, z-1) && checkCorrect(bcc, x, y, z-1) && checkCorrect(bcc, x+1, y, z-1)
-                    || checkCorrect(bcc, x+1, y, z-1) && checkCorrect(bcc, x+1, y, z) && checkCorrect(bcc, x+1, y, z+1)
-                    || checkCorrect(bcc, x-1, y, z-1) && checkCorrect(bcc, x-1, y, z) && checkCorrect(bcc, x-1, y, z+1) )
-            ) {
-                return false;
+            if (Baritone.settings().breakSideFromDirection.value && Baritone.settings().breakFromDirection.value) {
+                // If northern (etc) block is incorrect, disallow operation (return false)
+                if (    breakFrom.equals("n") && !(checkCorrect(bcc, x - 1, y, z - 1) && checkCorrect(bcc, x, y, z - 1) && checkCorrect(bcc, x + 1, y, z - 1))
+                        || breakFrom.equals("s") && !(checkCorrect(bcc, x - 1, y, z + 1) && checkCorrect(bcc, x, y, z + 1) && checkCorrect(bcc, x + 1, y, z + 1))
+                        || breakFrom.equals("w") && !(checkCorrect(bcc, x - 1, y, z - 1) && checkCorrect(bcc, x - 1, y, z) && checkCorrect(bcc, x - 1, y, z + 1))
+                        || breakFrom.equals("e") && !(checkCorrect(bcc, x + 1, y, z - 1) && checkCorrect(bcc, x + 1, y, z) && checkCorrect(bcc, x + 1, y, z + 1))
+                ) {
+                    return false;
+                }
+            } else {
+                if (    !(checkCorrect(bcc, x - 1, y, z - 1) && checkCorrect(bcc, x, y, z - 1) && checkCorrect(bcc, x + 1, y, z - 1)
+                        || checkCorrect(bcc, x - 1, y, z + 1) && checkCorrect(bcc, x, y, z + 1) && checkCorrect(bcc, x + 1, y, z + 1)
+                        || checkCorrect(bcc, x - 1, y, z - 1) && checkCorrect(bcc, x - 1, y, z) && checkCorrect(bcc, x - 1, y, z + 1)
+                        || checkCorrect(bcc, x + 1, y, z - 1) && checkCorrect(bcc, x + 1, y, z) && checkCorrect(bcc, x + 1, y, z + 1))
+                ) {
+                    return false;
+                }
             }
         }
         return true;
@@ -254,7 +272,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
         BetterBlockPos center = ctx.playerFeet();
         BetterBlockPos pathStart = baritone.getPathingBehavior().pathStart();
         for (int dx = -5; dx <= 5; dx++) {
-            for (int dy = Baritone.settings().breakFromAbove.value ? -1 : 0; dy <= 5; dy++) {
+            for (int dy = (Baritone.settings().breakFromAbove.value || Baritone.settings().yamiblue.value) ? -1 : 0; dy <= 5; dy++) {
                 for (int dz = -5; dz <= 5; dz++) {
                     int x = center.x + dx;
                     int y = center.y + dy;
@@ -656,7 +674,10 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
                     }
                     if (bcc.bsi.worldContainsLoadedChunk(blockX, blockZ)) { // check if its in render distance, not if its in cache
                         // we can directly observe this block, it is in render distance
-                        if (valid(bcc.bsi.get0(blockX, blockY, blockZ), schematic.desiredState(x, y, z, current, this.approxPlaceable), false)) {
+                        if (valid(bcc.bsi.get0(blockX, blockY, blockZ), schematic.desiredState(x, y, z, current, this.approxPlaceable), false)
+                                // added if partition that also runs checkSkyDestroyable when yamiblue is turned on
+                                && (!Baritone.settings().yamiblue.value || !checkSkyDestroyable(bcc, blockX, blockY, blockZ))
+                        ) {
                             observedCompleted.add(BetterBlockPos.longHash(blockX, blockY, blockZ));
                         } else {
                             incorrectPositions.add(new BetterBlockPos(blockX, blockY, blockZ));
@@ -807,7 +828,8 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
     }
 
     private Goal breakGoal(BlockPos pos, BuilderCalculationContext bcc) {
-        if (Baritone.settings().goalBreakFromAbove.value && bcc.bsi.get0(pos.up()).getBlock() instanceof BlockAir && bcc.bsi.get0(pos.up(2)).getBlock() instanceof BlockAir) { // TODO maybe possible without the up(2) check?
+        boolean goalBreakFromAbove = Baritone.settings().goalBreakFromAbove.value && (Baritone.settings().breakFromAbove.value || Baritone.settings().yamiblue.value);
+        if (goalBreakFromAbove && bcc.bsi.get0(pos.up()).getBlock() instanceof BlockAir && bcc.bsi.get0(pos.up(2)).getBlock() instanceof BlockAir) { // TODO maybe possible without the up(2) check?
             return new JankyGoalComposite(new GoalBreak(pos), new GoalGetToBlock(pos.up()) {
                 @Override
                 public boolean isInGoal(int x, int y, int z) {
