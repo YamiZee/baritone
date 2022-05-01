@@ -743,9 +743,9 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
 
         boolean ignoreBlocksNotInRenderDistance = Baritone.settings().yamiblue.value && Baritone.settings().ignoreBlocksNotInRenderDistance.value;
         incorrectPositions.forEach(pos -> {
-            if (ignoreBlocksNotInRenderDistance && !bcc.bsi.worldContainsLoadedChunk(pos.x, pos.z)) {
-                return;
-            }
+//            if (ignoreBlocksNotInRenderDistance && !bcc.bsi.worldContainsLoadedChunk(pos.x, pos.z)) {
+//                return;
+//            }
             IBlockState state = bcc.bsi.get0(pos);
             if (state.getBlock() instanceof BlockAir) {
                 if (approxPlaceable.contains(bcc.getSchematic(pos.x, pos.y, pos.z, state))) {
