@@ -268,7 +268,30 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
         return desired == null || desired.getBlock() == curr.getBlock();
     }
 
+    private int compareInts(int first, int second) {
+        int result = first - second;
+        if (result > 0) return 1;
+        if (result < 0) return -1;
+        return 0;
+    }
+
+    private int comparePriority(BetterBlockPos pos1, BetterBlockPos pos2) {
+        String breakFrom = Baritone.settings().breakingDirection.value.toLowerCase();
+        if (Baritone.settings().yamiblue.value && Baritone.settings().prioritizeByDirection.value) {
+            if (breakFrom.equals("n"))
+                return compareInts(pos1.z, pos2.z)*-1;
+            if (breakFrom.equals("s"))
+                return compareInts(pos1.z, pos2.z);
+            if (breakFrom.equals("w"))
+                return compareInts(pos1.x, pos2.x)*-1;
+            if (breakFrom.equals("e"))
+                return compareInts(pos1.x, pos2.x);
+        }
+        return 0;
+    }
+
     private Optional<Tuple<BetterBlockPos, Rotation>> toBreakNearPlayer(BuilderCalculationContext bcc) {
+
         BetterBlockPos center = ctx.playerFeet();
         BetterBlockPos pathStart = baritone.getPathingBehavior().pathStart();
         for (int dx = -5; dx <= 5; dx++) {
@@ -637,22 +660,24 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
 
                         // YamiBlue segment
                         if (Baritone.settings().yamiblue.value) {
-                            if (valid(bcc.bsi.get0(x, y, z), desired, false) || !checkSkyDestroyable(bcc, x, y, z)) {
+                            if (valid(bcc.bsi.get0(x, y, z), desired, false)) {
+                                incorrectPositions.remove(pos);
+                                observedCompleted.add(BetterBlockPos.longHash(pos));
+                            } else {
+                                if (checkSkyDestroyable(bcc, x, y, z))
+                                    incorrectPositions.add(pos);
+                                else
+                                    incorrectPositions.remove(pos);
+                                observedCompleted.remove(BetterBlockPos.longHash(pos));
+                            }
+                        } else {
+                            if (valid(bcc.bsi.get0(x, y, z), desired, false)) {
                                 incorrectPositions.remove(pos);
                                 observedCompleted.add(BetterBlockPos.longHash(pos));
                             } else {
                                 incorrectPositions.add(pos);
                                 observedCompleted.remove(BetterBlockPos.longHash(pos));
                             }
-                            continue;
-                        }
-
-                        if (valid(bcc.bsi.get0(x, y, z), desired, false)) {
-                            incorrectPositions.remove(pos);
-                            observedCompleted.add(BetterBlockPos.longHash(pos));
-                        } else {
-                            incorrectPositions.add(pos);
-                            observedCompleted.remove(BetterBlockPos.longHash(pos));
                         }
                     }
                 }
@@ -674,23 +699,25 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
                     }
                     if (bcc.bsi.worldContainsLoadedChunk(blockX, blockZ)) { // check if its in render distance, not if its in cache
                         // we can directly observe this block, it is in render distance
-                        if (valid(bcc.bsi.get0(blockX, blockY, blockZ), schematic.desiredState(x, y, z, current, this.approxPlaceable), false)
-                                // added if partition that also runs checkSkyDestroyable when yamiblue is turned on
-                                && (!Baritone.settings().yamiblue.value || !checkSkyDestroyable(bcc, blockX, blockY, blockZ))
-                        ) {
+                        if (valid(bcc.bsi.get0(blockX, blockY, blockZ), schematic.desiredState(x, y, z, current, this.approxPlaceable), false)) {
                             observedCompleted.add(BetterBlockPos.longHash(blockX, blockY, blockZ));
                         } else {
-                            incorrectPositions.add(new BetterBlockPos(blockX, blockY, blockZ));
                             observedCompleted.remove(BetterBlockPos.longHash(blockX, blockY, blockZ));
-                            if (incorrectPositions.size() > Baritone.settings().incorrectSize.value) {
-                                return;
+                            // yb: if yb is false, or yb is true and is edge block
+                            if (!Baritone.settings().yamiblue.value || checkSkyDestroyable(bcc, blockX, blockY, blockZ)) {
+                                incorrectPositions.add(new BetterBlockPos(blockX, blockY, blockZ));
+                                if (incorrectPositions.size() > Baritone.settings().incorrectSize.value) {
+                                    return;
+                                }
                             }
                         }
                         continue;
                     }
+                    boolean ignoreBlocksNotInRenderDistance = Baritone.settings().yamiblue.value && Baritone.settings().ignoreBlocksNotInRenderDistance.value;
                     // this is not in render distance
-                    if (!observedCompleted.contains(BetterBlockPos.longHash(blockX, blockY, blockZ))
-                          && !Baritone.settings().buildSkipBlocks.value.contains(schematic.desiredState(x, y, z, current, this.approxPlaceable).getBlock())) {
+                    if ( !ignoreBlocksNotInRenderDistance
+                            && !observedCompleted.contains(BetterBlockPos.longHash(blockX, blockY, blockZ))
+                            && !Baritone.settings().buildSkipBlocks.value.contains(schematic.desiredState(x, y, z, current, this.approxPlaceable).getBlock())) {
                         // and we've never seen this position be correct
                         // therefore mark as incorrect
                         incorrectPositions.add(new BetterBlockPos(blockX, blockY, blockZ));
@@ -713,7 +740,12 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
         List<BetterBlockPos> sourceLiquids = new ArrayList<>();
         List<BetterBlockPos> flowingLiquids = new ArrayList<>();
         Map<IBlockState, Integer> missing = new HashMap<>();
+
+        boolean ignoreBlocksNotInRenderDistance = Baritone.settings().yamiblue.value && Baritone.settings().ignoreBlocksNotInRenderDistance.value;
         incorrectPositions.forEach(pos -> {
+            if (ignoreBlocksNotInRenderDistance && !bcc.bsi.worldContainsLoadedChunk(pos.x, pos.z)) {
+                return;
+            }
             IBlockState state = bcc.bsi.get0(pos);
             if (state.getBlock() instanceof BlockAir) {
                 if (approxPlaceable.contains(bcc.getSchematic(pos.x, pos.y, pos.z, state))) {
@@ -737,6 +769,9 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
                 }
             }
         });
+
+        //logDirect("placables:"+placeable.size() + " | breakables:"+breakable.size());
+
         List<Goal> toBreak = new ArrayList<>();
         breakable.forEach(pos -> toBreak.add(breakGoal(pos, bcc)));
         List<Goal> toPlace = new ArrayList<>();
@@ -748,6 +783,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
         sourceLiquids.forEach(pos -> toPlace.add(new GoalBlock(pos.up())));
 
         if (!toPlace.isEmpty()) {
+            //logDirect("YB PATHING TO PLACE " + toPlace.size());
             return new JankyGoalComposite(new GoalComposite(toPlace.toArray(new Goal[0])), new GoalComposite(toBreak.toArray(new Goal[0])));
         }
         if (toBreak.isEmpty()) {
@@ -765,6 +801,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
             }
             return null;
         }
+        //logDirect("YB PATHING TO BREAK " + toBreak.size());
         return new GoalComposite(toBreak.toArray(new Goal[0]));
     }
 
